@@ -3,7 +3,7 @@ import { ChildProcessWithoutNullStreams, spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import bodyParser from "body-parser";
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import https from "https";
 import os from "os";
 import { encode } from "gpt-3-encoder";
@@ -12,22 +12,18 @@ import { config } from "dotenv";
 
 config();
 
-// Constants for the server and API configuration
-const port = process.env.SERVER_PORT || 3040;
+const port = 3040;
 const baseUrl = "https://chat.openai.com";
 const apiUrl = `${baseUrl}/backend-anon/conversation`;
-const refreshInterval = 60000; // Interval to refresh token in ms
-const errorWait = 120000; // Wait time in ms after an error
-const newSessionRetries: number =
-    parseInt(process.env.NEW_SESSION_RETRIES) || 5; // Number of retries to get a new session
+const sessionUrl = `${process.env.OPEN_AI_CLOUD_SCRAPER_URL}/v1/new-openai-session`;
+
+const newSessionRetries: number = 5;
 const userAgent =
-    process.env.USER_AGENT ||
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36";
-const authKey: string = process.env.API_KEY || null; // Authorized client apiKey
+const authKey: string = null;
 
 let cloudflared: ChildProcessWithoutNullStreams;
 
-// Type definition for the session object
 type Session = {
     deviceId: string;
     persona: string;
@@ -46,7 +42,28 @@ type Session = {
     token: string;
 };
 
-// Function to wait for a specified duration
+const axiosInstance = axios.create({
+    httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+    headers: {
+        accept: "*/*",
+        "accept-language": "en-US,en;q=0.9",
+        "cache-control": "no-cache",
+        "content-type": "application/json",
+        "oai-language": "en-US",
+        origin: baseUrl,
+        pragma: "no-cache",
+        referer: baseUrl,
+        "sec-ch-ua":
+            '"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-origin",
+        "user-agent": userAgent,
+    },
+});
+
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function GenerateCompletionId(prefix: string = "cmpl-") {
@@ -91,45 +108,6 @@ async function* StreamCompletion(data: any) {
     yield* linesToMessages(chunksToLines(data));
 }
 
-// Setup axios instance for API requests with predefined configurations
-const axiosInstance = axios.create({
-    httpsAgent: new https.Agent({ rejectUnauthorized: false }),
-    proxy:
-        process.env.PROXY === "true"
-            ? {
-                  host: process.env.PROXY_HOST,
-                  port: Number(process.env.PROXY_PORT),
-                  auth:
-                      process.env.PROXY_AUTH === "true"
-                          ? {
-                                username: process.env.PROXY_USERNAME,
-                                password: process.env.PROXY_PASSWORD,
-                            }
-                          : undefined,
-                  protocol: process.env.PROXY_PROTOCOL,
-              }
-            : false,
-    headers: {
-        accept: "*/*",
-        "accept-language": "en-US,en;q=0.9",
-        "cache-control": "no-cache",
-        "content-type": "application/json",
-        "oai-language": "en-US",
-        origin: baseUrl,
-        pragma: "no-cache",
-        referer: baseUrl,
-        "sec-ch-ua":
-            '"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-origin",
-        "user-agent": userAgent,
-    },
-});
-
-// Generate a proof token for the OpenAI API
 function GenerateProofToken(
     seed: string,
     diff: string,
@@ -170,21 +148,10 @@ function GenerateProofToken(
 
 // Function to get a new session ID and token from the OpenAI API
 async function getNewSession(retries: number = 0): Promise<Session> {
-    let newDeviceId = randomUUID();
-
     try {
-        const response = await axiosInstance.post(
-            `${baseUrl}/backend-anon/sentinel/chat-requirements`,
-            {},
-            {
-                headers: { "oai-device-id": newDeviceId },
-            }
-        );
+        const response = await axiosInstance.get(sessionUrl);
 
-        console.log("sesi berhasil");
-        console.log(response);
-        let session: Session = response.data as Session;
-        session.deviceId = newDeviceId;
+        let session: Session = response.data.data as Session;
 
         return session;
     } catch (error) {
@@ -241,22 +208,18 @@ async function handleChatCompletion(req: Request, res: Response) {
     try {
         let session = await getNewSession();
 
+        console.log("datanya: ");
+        console.log(session);
+
         if (!session) {
             console.error("Error getting a new session...");
-            console.error(
-                "If this error persists, your country may not be supported yet."
-            );
-            console.error(
-                "If your country was the issue, please consider using a U.S. VPN or a U.S. residential proxy."
-            );
             res.write(
                 JSON.stringify({
                     status: false,
                     error: {
-                        message: `Error getting a new session, If this error persists, your country may not be supported yet. If your country was the issue, please consider using a U.S. VPN or a U.S. residential proxy.`,
+                        message: "Error getting a new session...",
                         type: "invalid_request_error",
                     },
-                    support: "https://discord.pawan.krd",
                 })
             );
 
@@ -581,11 +544,9 @@ async function StartCloudflaredTunnel(
 
 // Start the server and the session ID refresh loop
 app.listen(port, async () => {
-    if (process.env.CLOUDFLARED === undefined) process.env.CLOUDFLARED = "true";
-    let cloudflared = process.env.CLOUDFLARED === "true";
     let filePath: string;
     let publicURL: string;
-    if (cloudflared) {
+    if (process.env.CLOUDFLARED ?? true) {
         filePath = await DownloadCloudflared();
         publicURL = await StartCloudflaredTunnel(filePath);
     }
@@ -607,11 +568,4 @@ app.listen(port, async () => {
         );
         if (filePath) fs.unlinkSync(filePath);
     }
-    if (cloudflared && publicURL) console.log();
-    console.log("📝 Author: Pawan.Krd");
-    console.log(`🌐 Discord server: https://discord.gg/pawan`);
-    console.log("🌍 GitHub Repository: https://github.com/PawanOsman/ChatGPT");
-    console.log(
-        `💖 Don't forget to star the repository if you like this project!`
-    );
 });
