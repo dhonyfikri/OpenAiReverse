@@ -17,7 +17,7 @@ const baseUrl = "https://chat.openai.com";
 const apiUrl = `${baseUrl}/backend-anon/conversation`;
 const sessionUrl = `${process.env.OPEN_AI_CLOUD_SCRAPER_URL}/v1/new-openai-session`;
 
-const newSessionRetries: number = 5;
+const newSessionRetries: number = 20;
 const userAgent =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36";
 const authKey: string = null;
@@ -205,12 +205,18 @@ async function handleChatCompletion(req: Request, res: Response) {
         `${req.body?.messages?.length ?? 0} messages`,
         req.body.stream ? "(stream-enabled)" : "(stream-disabled)"
     );
+
+    let session = await getNewSession();
+    await getCompletionWithOpenAi(req, res, session);
+}
+
+async function getCompletionWithOpenAi(
+    req: Request,
+    res: Response,
+    session: Session,
+    retries: number = 0
+) {
     try {
-        let session = await getNewSession();
-
-        console.log("datanya: ");
-        console.log(session);
-
         if (!session) {
             console.error("Error getting a new session...");
             res.write(
@@ -399,21 +405,28 @@ async function handleChatCompletion(req: Request, res: Response) {
 
         res.end();
     } catch (error: any) {
-        // console.log("Error:", error.response?.data ?? error.message);
-        if (!res.headersSent) res.setHeader("Content-Type", "application/json");
-        // console.error("Error handling chat completion:", error);
-        res.write(
-            JSON.stringify({
-                status: false,
-                error: {
-                    message:
-                        "An error occurred. please try again. Additionally, ensure that your request complies with OpenAI's policy.",
-                    type: "invalid_request_error",
-                },
-                support: "https://discord.pawan.krd",
-            })
-        );
-        res.end();
+        await wait(500);
+
+        if (retries < newSessionRetries) {
+            getCompletionWithOpenAi(req, res, session, retries + 1);
+        } else {
+            // console.log("Error:", error.response?.data ?? error.message);
+            if (!res.headersSent)
+                res.setHeader("Content-Type", "application/json");
+            // console.error("Error handling chat completion:", error);
+            res.write(
+                JSON.stringify({
+                    status: false,
+                    error: {
+                        message:
+                            "An error occurred. please try again. Additionally, ensure that your request complies with OpenAI's policy.",
+                        type: "invalid_request_error",
+                    },
+                    support: "https://discord.pawan.krd",
+                })
+            );
+            res.end();
+        }
     }
 }
 
