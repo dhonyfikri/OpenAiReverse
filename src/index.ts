@@ -10,6 +10,9 @@ import { encode } from "gpt-3-encoder";
 import { randomUUID, randomInt, createHash } from "crypto";
 import { config } from "dotenv";
 
+export const maxDuration = 58;
+export const dynamic = "force-dynamic";
+
 config();
 
 const port = 8000;
