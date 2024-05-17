@@ -12,5 +12,10 @@
             "src": "/(.*)",
             "dest": "dist/index.js"
         }
-    ]
+    ],
+    "functions": {
+        "app/api/**/*": {
+            "maxDuration": 60
+        }
+    }
 }
