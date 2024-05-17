@@ -10,8 +10,6 @@ import { encode } from "gpt-3-encoder";
 import { randomUUID, randomInt, createHash } from "crypto";
 import { config } from "dotenv";
 
-export const maxDuration = 24;
-
 config();
 
 const port = 8000;

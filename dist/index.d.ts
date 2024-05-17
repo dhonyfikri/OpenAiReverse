@@ -1,1 +1,1 @@
-export declare const maxDuration = 24;
+export {};
