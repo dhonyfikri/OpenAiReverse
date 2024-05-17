@@ -171,6 +171,11 @@ function enableCORS(req: Request, res: Response, next: NextFunction) {
     next();
 }
 
+function handleDefault(req: Request, res: Response) {
+    res.write("Welcome to OpenAI Reverse API");
+    return res.end();
+}
+
 // Middleware to handle chat completions
 async function handleChatCompletion(req: Request, res: Response) {
     // If .env sets API_KEY and is not empty, the apiKey of req.headers will be verified.
@@ -434,6 +439,8 @@ async function getCompletionWithOpenAi(
 const app = express();
 app.use(bodyParser.json());
 app.use(enableCORS);
+
+app.get("/", handleDefault);
 
 // Route to handle POST requests for chat completions
 app.post("/v1/chat/completions", handleChatCompletion);
