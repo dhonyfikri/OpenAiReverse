@@ -12,7 +12,7 @@
         "outDir": "./dist",
         "baseUrl": "./",
         "paths": {
-            "@/*": ["api/*"]
+            "@/*": ["src/*"]
         },
         "incremental": true,
         "moduleResolution": "node",
@@ -23,6 +23,6 @@
         "forceConsistentCasingInFileNames": false,
         "noFallthroughCasesInSwitch": false
     },
-    "include": ["api"],
+    "include": ["src"],
     "exclude": ["node_modules", "dist"]
 }
