@@ -12,12 +12,12 @@ import { config } from "dotenv";
 
 config();
 
-const port = 3040;
+const port = 8000;
 const baseUrl = "https://chat.openai.com";
 const apiUrl = `${baseUrl}/backend-anon/conversation`;
 const sessionUrl = `${process.env.OPEN_AI_CLOUD_SCRAPER_URL}/v1/new-openai-session`;
 
-const newSessionRetries: number = 20;
+const newSessionRetries: number = 100;
 const userAgent =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36";
 const authKey: string = null;
@@ -155,7 +155,7 @@ async function getNewSession(retries: number = 0): Promise<Session> {
 
         return session;
     } catch (error) {
-        await wait(500);
+        await wait(1);
         return retries < newSessionRetries ? getNewSession(retries + 1) : null;
     }
 }
@@ -213,7 +213,7 @@ async function handleChatCompletion(req: Request, res: Response) {
     );
 
     let session = await getNewSession();
-    await getCompletionWithOpenAi(req, res, session);
+    await getCompletionWithOpenAi(req, res, session, 1000);
 }
 
 async function getCompletionWithOpenAi(
@@ -411,8 +411,6 @@ async function getCompletionWithOpenAi(
 
         res.end();
     } catch (error: any) {
-        await wait(500);
-
         if (retries < newSessionRetries) {
             getCompletionWithOpenAi(req, res, session, retries + 1);
         } else {
@@ -453,7 +451,7 @@ app.use((req, res) =>
         error: {
             message: `The requested endpoint (${req.method.toLocaleUpperCase()} ${
                 req.path
-            }) was not found. please make sure to use "http://localhost:3040/v1" as the base URL.`,
+            }) was not found. please make sure to use "http://localhost:8000/v1" as the base URL.`,
             type: "invalid_request_error",
         },
         support: "https://discord.pawan.krd",
@@ -564,7 +562,7 @@ async function StartCloudflaredTunnel(
 }
 
 // Start the server and the session ID refresh loop
-app.listen(port, async () => {
+app.listen(port, "0.0.0.0", async () => {
     let filePath: string;
     let publicURL: string;
     if (process.env.CLOUDFLARED ?? true) {

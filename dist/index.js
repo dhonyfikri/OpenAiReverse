@@ -10,11 +10,11 @@ import { encode } from "gpt-3-encoder";
 import { randomUUID, randomInt, createHash } from "crypto";
 import { config } from "dotenv";
 config();
-const port = 3040;
+const port = 8000;
 const baseUrl = "https://chat.openai.com";
 const apiUrl = `${baseUrl}/backend-anon/conversation`;
 const sessionUrl = `${process.env.OPEN_AI_CLOUD_SCRAPER_URL}/v1/new-openai-session`;
-const newSessionRetries = 20;
+const newSessionRetries = 100;
 const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36";
 const authKey = null;
 let cloudflared;
@@ -105,7 +105,7 @@ async function getNewSession(retries = 0) {
         return session;
     }
     catch (error) {
-        await wait(500);
+        await wait(1);
         return retries < newSessionRetries ? getNewSession(retries + 1) : null;
     }
 }
@@ -141,7 +141,7 @@ async function handleChatCompletion(req, res) {
     }
     console.log("Request:", `${req.method} ${req.originalUrl}`, `${req.body?.messages?.length ?? 0} messages`, req.body.stream ? "(stream-enabled)" : "(stream-disabled)", sessionUrl);
     let session = await getNewSession();
-    await getCompletionWithOpenAi(req, res, session);
+    await getCompletionWithOpenAi(req, res, session, 1000);
 }
 async function getCompletionWithOpenAi(req, res, session, retries = 0) {
     try {
@@ -300,7 +300,6 @@ async function getCompletionWithOpenAi(req, res, session, retries = 0) {
         res.end();
     }
     catch (error) {
-        await wait(500);
         if (retries < newSessionRetries) {
             getCompletionWithOpenAi(req, res, session, retries + 1);
         }
@@ -327,7 +326,7 @@ app.post("/v1/chat/completions", handleChatCompletion);
 app.use((req, res) => res.status(404).send({
     status: false,
     error: {
-        message: `The requested endpoint (${req.method.toLocaleUpperCase()} ${req.path}) was not found. please make sure to use "http://localhost:3040/v1" as the base URL.`,
+        message: `The requested endpoint (${req.method.toLocaleUpperCase()} ${req.path}) was not found. please make sure to use "http://localhost:8000/v1" as the base URL.`,
         type: "invalid_request_error",
     },
     support: "https://discord.pawan.krd",
@@ -410,7 +409,7 @@ async function StartCloudflaredTunnel(cloudflaredPath) {
         });
     });
 }
-app.listen(port, async () => {
+app.listen(port, "0.0.0.0", async () => {
     let filePath;
     let publicURL;
     if (process.env.CLOUDFLARED ?? true) {
