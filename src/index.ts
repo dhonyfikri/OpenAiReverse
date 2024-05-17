@@ -11,7 +11,7 @@ import { randomUUID, randomInt, createHash } from "crypto";
 import { config as dotenvConfig } from "dotenv";
 
 export const config = {
-    maxDuration: 5,
+    maxDuration: 60,
 };
 
 dotenvConfig();
