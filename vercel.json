@@ -1,13 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "dist/*.js": {
-      "maxDuration": 60
-    },
-    "src/*.ts": {
-      "maxDuration": 60
-    }
-  },
   "builds": [
     {
       "src": "dist/index.js",
