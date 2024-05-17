@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "OpenAI API Free Reverse Proxy",
   "type": "module",
-  "main": "app.js",
+  "main": "index.js",
   "scripts": {
     "start": "tsc && node dist/index.js",
     "watch": "tsc-watch --onSuccess \"node dist/index.js\"",
