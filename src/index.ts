@@ -8,11 +8,15 @@ import https from "https";
 import os from "os";
 import { encode } from "gpt-3-encoder";
 import { randomUUID, randomInt, createHash } from "crypto";
-import { config } from "dotenv";
+import { config as dotenvConfig } from "dotenv";
 
-export const maxDuration = 58;
+const config = {
+    maxDuration: 58,
+};
 
-config();
+module.exports = config;
+
+dotenvConfig();
 
 const port = 8000;
 const baseUrl = "https://chat.openai.com";
