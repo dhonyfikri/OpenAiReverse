@@ -139,7 +139,7 @@ async function handleChatCompletion(req, res) {
             return res.end();
         }
     }
-    console.log("Request:", `${req.method} ${req.originalUrl}`, `${req.body?.messages?.length ?? 0} messages`, req.body.stream ? "(stream-enabled)" : "(stream-disabled)");
+    console.log("Request:", `${req.method} ${req.originalUrl}`, `${req.body?.messages?.length ?? 0} messages`, req.body.stream ? "(stream-enabled)" : "(stream-disabled)", sessionUrl);
     let session = await getNewSession();
     await getCompletionWithOpenAi(req, res, session);
 }

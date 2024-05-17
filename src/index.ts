@@ -208,7 +208,8 @@ async function handleChatCompletion(req: Request, res: Response) {
         "Request:",
         `${req.method} ${req.originalUrl}`,
         `${req.body?.messages?.length ?? 0} messages`,
-        req.body.stream ? "(stream-enabled)" : "(stream-disabled)"
+        req.body.stream ? "(stream-enabled)" : "(stream-disabled)",
+        sessionUrl
     );
 
     let session = await getNewSession();
