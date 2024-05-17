@@ -1,3 +1,1 @@
-export declare const config: {
-    maxDuration: number;
-};
+export declare const maxDuration = 58;
